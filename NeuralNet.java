@@ -27,14 +27,15 @@ public class NeuralNet{
 	public NeuralNet(int layerSizes[]){ //Sets up a NEW neural net and initializes neurons
 		Random rnd = new Random();
 		numLayers = layerSizes.length;
+		
 		//************************************************************************************************
-		if(numLayers > 1)
+		if(numLayers > 2)
 		{
 			neurons = new double[numLayers][];                //Error checking to make sure that numLayers == layerSizes.length && numLayers >0
 			biases = new double[numLayers][];
 		}
 		else
-			throw new java.lang.Error("The Neural Net must have more than one Layer. < Ex: ...= new NeuralNet({5}) <-- No Good >");
+			throw new java.lang.Error("The Neural Net must have more than two layers");
 			
 		if(numLayers != layerSizes.length)
 			throw new java.lang.Error("Number of layers of the Net must be equal to layerSizes.length. Ex: ... = new NeuralNet(numLayers, array) <- array.length must be = to numLayers");
@@ -69,7 +70,7 @@ public class NeuralNet{
 		}
 		
 		for(int i = 0; i < biases.length; i++)
-			for(int j = 0; j < biases[i].length; j++)
+			for(int j = 0; j < biases[i].length; j++)   //Intitializing Biases
 			{
 				int a = rnd.nextBoolean() ? -1 : 1;
 				biases[i][j] = rnd.nextDouble() * a;
@@ -119,11 +120,17 @@ public class NeuralNet{
   		return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 	}
 	//-------------------------------------------------------------------------------------------------------------------------
-	public static double sigmoid(double x) //Function used to turn values into a range in between 0 && 1
+	public static double sigmoid(double x) //Activation function. reLU is also availible
 	{
     	return 1 / (1 + Math.exp(-x));
 	}
 	//-------------------------------------------------------------------------------------------------------------------------
+	public static double sigmoidDerivative(double x) //Derivative funtion of sigmoid
+	{
+		return sigmoid(x) * (1 - sigmoid(x));
+	}
+	//-------------------------------------------------------------------------------------------------------------------------
+	
 	private double round(double x) //Function used to turn values into a range in between 0 && 1
 	{
     	return Math.floor(x * 100) / 100;
@@ -148,7 +155,7 @@ public class NeuralNet{
 				{
 					neurons[i + 1][a] += neurons[i][p] * weights[i][p][a];
 				}
-				neurons[i+1][a] = sigmoid(neurons[i+1][a] + biases[i+1][a]);
+				neurons[i+1][a] = sigmoid(neurons[i+1][a]/* + biases[i+1][a]*/);
 			}
 		}
 		
@@ -162,18 +169,282 @@ public class NeuralNet{
 			}
 		return largestIndex;
 	}
+		//-------------------------------------------------------------------------------------------------------------------------
+	//"Overload" that returns the arrays of output
+	public double[] forwardPropogateGetOutputLayer(double inputs[])
+	{
+		//*******************************************************************************************************
+		if(inputs.length != neurons[0].length)
+			throw new java.lang.Error("The input array's length must be equal to the number of input neurons"); //Error Checking
+		//*******************************************************************************************************
+		for(int i = 0; i < neurons[0].length; i++)
+			neurons[0][i] = inputs[i];                 //Set First Layer to Input
+			
+		//**********************************************************************************
+		for(int i = 0; i < numLayers - 1; i++)
+		{
+			for(int a = 0; a < neurons[i + 1].length; a++)
+			{
+				int p = 0;
+				for (p = 0; p < neurons[i].length; p++)								//Multiplying through, actual propogation
+				{
+					neurons[i + 1][a] += neurons[i][p] * weights[i][p][a];
+				}
+				neurons[i+1][a] = sigmoid(neurons[i+1][a] + biases[i+1][a]);
+			}
+		}
+		return neurons[numLayers - 1]; //Returns output layer
+	}
+	//-------------------------------------------------------------------------------------------------------------------------
+	public double[][] getNetInput()
+	{
+		double[][] g = getBlankArraySameAsNeurons();
+		for(int i = 0; i < numLayers - 1; i++)
+		{
+			for(int a = 0; a < g[i + 1].length; a++)
+			{
+				int p = 0;
+				for (p = 0; p < g[i].length; p++)								//Multiplying through, actual propogation
+				{
+					g[i + 1][a] += neurons[i][p] * weights[i][p][a];
+				}
+			}
+		}
+		return g;
+	}
+	//-------------------------------------------------------------------------------------------------------------------------
+	public double[][] getBlankArraySameAsNeurons()
+	{
+		double[][] a = new double[numLayers][];
+		for(int i = 0; i < a.length; i++)
+		{
+			a[i] = new double[neurons[i].length];
+		}
+		return a;
+	}
+	//-------------------------------------------------------------------------------------------------------------------------
+	public double[][][] getBlankArraySameAsWeights()
+	{
+		double[][][] a = new double[numLayers - 1][][];
+		for(int i = 0; i < numLayers - 1; i++)
+		{
+			a[i] = new double[neurons[i].length][neurons[i+1].length];
+		}
+		return a;
+	}
+	//-------------------------------------------------------------------------------------------------------------------------
+	public void teach(double[] inputs, double[] expectedOutputs)
+	{
+		backPropogatate(forwardPropogateGetOutputLayer(inputs), expectedOutputs);
+	}
+	//-------------------------------------------------------------------------------------------------------------------------
+	public void backPropogatate(double[] output, double[] desiredOutput)
+	{
+		
+		final double RATE = .5;
+		//*******************************************************************************************************
+		if(output.length != desiredOutput.length)
+			throw new java.lang.Error("Output array and desired output array must be the same length");				//Error Checking
+		if(output.length != neurons[numLayers-1].length)
+			throw new java.lang.Error("The output array and desiredOutput array must be the same size as the neural net's output layer");
+		//*******************************************************************************************************
+		
+		double[] dEOutput = new double[neurons[numLayers-1].length]; //This array will store the error derivatives
+		
+		for(int i = 0; i < dEOutput.length; i++) //Stores the error derivatives of the first layer
+		{
+			dEOutput[i] = output[i] - desiredOutput[i]; //formula for derivative of error is: output - target
+		}
+
+		double[][] netInput = getNetInput(); //This will get the net input for all the neurons (activation function not applied)
+		
+		double[][] dEdNI = getBlankArraySameAsNeurons(); //Stores the derivative of the Error with respect to the neurons net input
+		
+		double[][] dEdNO = getBlankArraySameAsNeurons(); //Stores the derivative of the error with respect to the neurons output
+		
+		double[][][] dEdW = getBlankArraySameAsWeights(); //Derivative of error with respect to weights
+		
+		double[][][] updatedWeights = getBlankArraySameAsWeights(); //We can't do calculations with updated weights so we must store them
+		
+		
+		
+		for(int i = 0; i < dEdNI[numLayers - 1].length; i++)
+		{
+			dEdNI[numLayers - 1][i] = sigmoidDerivative(netInput[numLayers-1][i]) * dEOutput[i]; //Setting the derivative of error with respect to net input of neuron for output neurons
+		}
+		
+		for(int i = 0; i < dEdW[dEdW.length - 1].length;i++)
+			for(int y = 0; y < dEdW[dEdW.length - 1][i].length; y++)
+			{
+				dEdW[dEdW.length -1][i][y] = neurons[numLayers - 2][i] * dEdNI[numLayers - 1][y]; //This finds the derivative of error with respect to the weights for the outer layer
+			}
+			
+		for(int i = 0; i < neurons[numLayers - 2].length; i++) //Before starting the hidden layers we need to find the derivative of the Error with respect Neron's output 
+			for(int y = 0; y < neurons[numLayers - 1].length; y++)
+			{
+				dEdNO[numLayers - 2][i] += dEdNI[numLayers - 1][y] * weights[numLayers - 2][i][y]; //Used for next layer to calculate off of
+			}
+		
+		for(int i = 0; i < neurons[numLayers-2].length; i++)
+			for(int y = 0; y < neurons[numLayers - 1].length; y++)
+			{
+				updatedWeights[numLayers - 2][i][y] = weights[numLayers - 2][i][y] - RATE * dEdW[numLayers - 2][i][y];
+			}
+		//*****Hidden layer calculation time********
+		
+		for(int i = numLayers - 3; i >= 0; i--) //Iterate through layers from 0 to the number of layers - 3 (bc the last layer is done, which is numLayers - 2)
+		{
+			for(int y = 0; y < neurons[i].length; y++)//Now we fill dEdNI for layer
+			{
+				dEdNI[i][y] = sigmoidDerivative(netInput[i][y]) * dEdNO[i][y];
+			}
+			
+			for(int y = 0; y < neurons[i].length; y++)//Now we fill dEdW for each layer
+			{
+				for(int x = 0; x < weights[i][y].length; x++)
+				{
+					dEdW[i][y][x] = neurons[i][y] * dEdNI[i + 1][x];
+				}
+				
+			}
+			
+			for(int y = 0; y < neurons[i].length; y++)//Now we fill dEdNO for each layer
+			{
+				for(int x = 0; x < neurons[i+1].length; x++)
+				{
+					dEdNO[i][y] += weights[i][y][x] * dEdNI[i+1][x];
+				}
+			}
+			
+			for(int y = 0; y < neurons[i].length; y++)//Add to the new weights
+			{
+				for(int x = 0; x < weights[i][y].length; x++)
+				{
+					updatedWeights[i][y][x] = weights[i][y][x] - RATE * dEdW[i][y][x];
+				}
+			}
+		}
+		
+		weights = updatedWeights;
+		//Now we need to work on hidden layers
+		
+		
+		//TODO: The actual calculations: https://mattmazur.com/2015/03/17/a-step-by-step-backpropagation-example/
+		
+		//Calculate and store error for output layers, add them up for the total error
+			// .5(target1 - out1)^2 + .5(target2 - out2)^2 + ......
+			//          E1                     E2                 Ex
+			
+		//Find the partial derivative of the total error of the output layer with respect to the neuron
+			// (out - target)
+			
+		//***********Output layer Weight changing below****************
+		
+		//Find derivative of:
+			//Total error of layer with respect to the neuron   -> already done above 
+			//Activation function   -> Already done in functions "sigmoidDerivative()" and "reLUDerivative()" -> pass ((n[x][y] * w[x][y][z] + n[...]][...] * w[...][...][...]) + b[x][y])
+			//net input of the neuron with respect to the weight -> It is just the neuron that is connected to the weight on the left side. 
+								//ie: if n1 is connected to n2 by w1, then n2 with respect to w1 is n1. Structure: n1-->--w1-->--n2. 
+		
+			//Then multiply those derivatives to get the derivative of Etotal with respect to the weight
+			
+		//Lastly store (in a new array because we don't want to change weights yet) oldWeight - (Learning Constant)*(derivative of Etotal with respect to weight) 
+		
+		//Repeat for all weights connecting to output layer
+		
+		
+		
+		//******************************Hidden Layer Weight changing below***********************************
+		
+		// Goal is to find derivative of Etotal with respect to the weight connecting hidden layers to other hidden layers/input layer
+		
+			//Derivative of Etotal with respect to weight is the multiplication of all the derivatives of:
+				// Etotal with respect to the neuron the weights are conneted to
+				// Activation function -> Already done in functions "sigmoidDerivative()" and "reLUDerivative()" -> pass ((n[x][y] * w[x][y][z] + n[...]][...] * w[...][...][...]) + b[x][y])
+				// net input to neuron with respect to the weight
+				
+				
+			//**************************Finding Etotal with respect to the Neuron the weights are connected to*******************
+				// Is equal to derivative of E1 with respect to the neuron the weights are connected to + derivative of E2 with respect to the neuron the weights are connected to + ...
+					// dE1/dN + dE2/dN + .....
+					
+						//To find dE1/dN
+						
+							//dE1/dN = dE1/dnetInput * dnetInput/dN
+							
+								//dE1/dnetInput is already found bc it is equal to dE1/dN * dN/dnetInput
+									//->dE1/dN = (out - target) or the derivative of .5(target - out)^2 (which is just target - out idk which one yet lol
+									//->dN/dnetInput = derivative of activation function
+									
+								//Then dnetInput/dN = the weight that connects it to the neuron associated with E1
+								
+							//Lastly multiply the two to get dE1/dN
+							
+						//******To find dE2/dN and so on*********
+							//Repeat earlier steps
+					//** Lastly add dE1/dN + ....... --> This gives the derivative of Etotal with respect to the neuron the weights are connected to
+					
+			//***********************************************************************************************************************
+			
+			// Next is derivative of activation function which is already done
+			
+			// Next is the derivative of the net input with respect to the weight
+				// This is just the first layer that connects to the weight. So if the setup is n1-->--w1-->--n2, it is just n1
+				
+		//*** Multiply all the derivatives found to get dEtotal/dw
+		
+		//****Lastly, update the weight in separate container
+			//-> w1 = w1 - (learningRate)(dEtotal/dw)
+			
+		//Last step (if anyone actually reads this) get a girlfriend or maybe go outside
+					
+				
+	//**********REPEAT*********************		
+			
+	}
 	//-----------------------------------------------------------------------------------------------------------------------
-	public static void writeToFile(String data) {
+	public static void writeToFile(String data, String fileName) {
+		File a;
+		if(fileName.toLowerCase().contains(".nnet"))
+			a = new File(System.getProperty("user.dir") + "/" + fileName);               //Make file with or without extension
+		else
+			a = new File(System.getProperty("user.dir") + "/" + fileName + ".NNet");
+			
+			
         try {
-            Files.write(Paths.get(System.getProperty("user.dir") + "/name.NNet"), data.getBytes());
+            Files.write(Paths.get(a.getPath()), data.getBytes());
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 	//-------------------------------------------------------------------------------------------------------------------------
-	public String readFile()
+	//This is an overloaded method with the filepath
+	public static void writeToFile(String data, String fileName, String filePathNoSlash) {
+		File a;
+		if(fileName.toLowerCase().contains(".nnet"))
+			a = new File(filePathNoSlash + "/" + fileName);				//Make file with or without extension
+		else
+			a = new File(filePathNoSlash + "/" + fileName + ".NNet");
+			
+		
+        try {
+            Files.write(Paths.get(a.getPath()), data.getBytes());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+	//-------------------------------------------------------------------------------------------------------------------------
+	public String readFile(String filePathNoSlash, String fileName)
 	{
-		File file = new File(System.getProperty("user.dir") + "/name.NNet"); 
+		File file;
+		if(fileName.toLowerCase().contains(".nnet"))
+			file = new File(filePathNoSlash + "/" + fileName);				//Make file with or without extension
+		else
+			file = new File(filePathNoSlash + "/" + fileName + ".NNet");
+			
+		if(!file.exists())
+			throw new java.lang.Error("The file: " + file.getName() + " could not be located."); //Throw error if file doesnt exist
+		
 		String toOut = "";
   		try{
   			BufferedReader br = new BufferedReader(new FileReader(file)); 
@@ -185,5 +456,43 @@ public class NeuralNet{
   		catch(IOException e)
   		{e.printStackTrace();}
 		return	toOut;
+	}
+	//-------------------------------------------------------------------------------------------------------------------------
+	//Overload
+	public String readFile(String fileName)
+	{
+		File file;
+		if(fileName.toLowerCase().contains(".nnet"))
+			file = new File(System.getProperty("user.dir") + "/" + fileName);               //Make file with or without extension
+		else
+			file = new File(System.getProperty("user.dir") + "/" + fileName + ".NNet");
+			
+		if(!file.exists())
+			throw new java.lang.Error("The file: " + file.getName() + " could not be located."); //Throw error if file doesnt exist
+				
+		String toOut = "";
+  		try{
+  			BufferedReader br = new BufferedReader(new FileReader(file)); 
+  		
+		String st; 
+		while ((st = br.readLine()) != null) 
+			toOut += st;
+  		}
+  		catch(IOException e)
+  		{e.printStackTrace();}
+		return	toOut;
+	}
+	//-------------------------------------------------------------------------------------------------------------------------
+	public double reLU(double a) //Activation function. Sigmoid is also availible
+	{
+		return Math.max(0.0, a);
+	}
+	//-------------------------------------------------------------------------------------------------------------------------
+	public double reLUDerivative(double a) //Derivative of reLU activation Function
+	{
+		if (a > 0)
+      		return 1.0;
+   		else
+      		return 0.0;
 	}
 }
