@@ -10,4 +10,4 @@ The ai now learns! You can also save and load neural nets!
 How to train:
  Create a net as seen in Net_Runner.java
  
- Then call the ".learn" function, and as the first parameter put the input of the net, and as the second parameter the desired output for those inputs. And thats all!
+ Then call the ".teach" function, and as the first parameter put the input of the net, and as the second parameter the desired output for those inputs. And thats all!
