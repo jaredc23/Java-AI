@@ -5,7 +5,7 @@ Files: all nessesary files are provided and comments with explain code.
 How AI works in general is *not* explained, rather the comments are explaining what it code is doing, not *why*
  
 # NOTE:
-The ai now learns! The only feature not yet availible is saving and loading nets
+The ai now learns! You can also save and load neural nets!
 
 How to train:
  Create a net as seen in Net_Runner.java
