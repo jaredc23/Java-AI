@@ -6,6 +6,7 @@ import java.nio.file.Paths;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.File;
+import java.util.StringTokenizer;
 
 public class NeuralNet{
 	//Neural Net Class
@@ -22,59 +23,92 @@ public class NeuralNet{
 	public NeuralNet(String Net_Path) //This constructor is for loading a Neural net from a .nnet file
 	{
 		path = Net_Path;
+		load();
+		numLayers = weights.length + 1;
+		neurons = new double[numLayers][];
+		
+		neurons[0] = new double[weights[0].length];
+		neurons[numLayers - 1] = new double[weights[numLayers - 2][0].length];
+		
+		for(int i = 1; i < numLayers - 1; i++)
+			neurons[i] = new double[weights[i].length];
 	}
 	//----------------------------------------------------------------------------------------------------------
-	public NeuralNet(int layerSizes[]){ //Sets up a NEW neural net and initializes neurons
-		Random rnd = new Random();
-		numLayers = layerSizes.length;
-		
-		//************************************************************************************************
-		if(numLayers > 2)
+	public NeuralNet(int layerSizes[], boolean shouldLoadNetIfAvailible){ //Sets up a NEW neural net and initializes neurons
+		if(shouldLoadNetIfAvailible)
 		{
-			neurons = new double[numLayers][];                //Error checking to make sure that numLayers == layerSizes.length && numLayers >0
-			biases = new double[numLayers][];
+			File dir = new File(System.getProperty("user.dir"));
+			 for (File file : dir.listFiles()) {
+			   if (file.getName().toLowerCase().endsWith((".nnet"))) {
+			     path = file.getName();
+			     
+			 	 load();
+			 	 numLayers = weights.length + 1;
+				 neurons = new double[numLayers][];
+				
+				 neurons[0] = new double[weights[0].length];
+				 neurons[numLayers - 1] = new double[weights[numLayers - 2][0].length];
+				
+				 for(int i = 1; i < numLayers - 1; i++)
+					neurons[i] = new double[weights[i].length];
+			     
+			     break;
+			   }
+  			}
 		}
 		else
-			throw new java.lang.Error("The Neural Net must have more than two layers");
+		{	
+			Random rnd = new Random();
+			numLayers = layerSizes.length;
 			
-		if(numLayers != layerSizes.length)
-			throw new java.lang.Error("Number of layers of the Net must be equal to layerSizes.length. Ex: ... = new NeuralNet(numLayers, array) <- array.length must be = to numLayers");
-		//*************************************************************************************************
-		for (int i = 0; i < layerSizes.length; i++){
-			if(layerSizes[i] > 0)
+			//************************************************************************************************
+			if(numLayers > 2)
 			{
-				neurons[i] = new double[layerSizes[i]];
-				biases[i] = new double [layerSizes[i]];
+				neurons = new double[numLayers][];                //Error checking to make sure that numLayers == layerSizes.length && numLayers >0
+				biases = new double[numLayers][];
 			}
 			else
-				throw new java.lang.Error("The number of Neurons in a layer can't be zero");//******Error******//
-		}
-		
-		weights = new double [numLayers - 1][][];                                  //(comment below)
-		
-		for(int i = 0; i < numLayers - 1; i++)
-		{
-			weights[i] = new double[neurons[i].length][neurons[i + 1].length];    //Initializing the size and random values of the connections between neurons
-		}
-		
-		for(int i = 0; i < numLayers-1; i++){
-			for(int u = 0; u < weights[i].length; u++){
-				for (int p = 0; p < weights[i][u].length; p++){                   //(comment above)
-					double xx = Math.floor(rnd.nextDouble() * 100) / 100;
-					while(xx <= 0){
-						xx = Math.floor(rnd.nextDouble() * 100) / 100;
+				throw new java.lang.Error("The Neural Net must have more than two layers");
+				
+			if(numLayers != layerSizes.length)
+				throw new java.lang.Error("Number of layers of the Net must be equal to layerSizes.length. Ex: ... = new NeuralNet(numLayers, array) <- array.length must be = to numLayers");
+			//*************************************************************************************************
+			for (int i = 0; i < layerSizes.length; i++){
+				if(layerSizes[i] > 0)
+				{
+					neurons[i] = new double[layerSizes[i]];
+					biases[i] = new double [layerSizes[i]];
+				}
+				else
+					throw new java.lang.Error("The number of Neurons in a layer can't be zero");//******Error******//
+			}
+			
+			weights = new double [numLayers - 1][][];                                  //(comment below)
+			
+			for(int i = 0; i < numLayers - 1; i++)
+			{
+				weights[i] = new double[neurons[i].length][neurons[i + 1].length];    //Initializing the size and random values of the connections between neurons
+			}
+			
+			for(int i = 0; i < numLayers-1; i++){
+				for(int u = 0; u < weights[i].length; u++){
+					for (int p = 0; p < weights[i][u].length; p++){                   //(comment above)
+						double xx = Math.floor(rnd.nextDouble() * 100) / 100;
+						while(xx <= 0){
+							xx = Math.floor(rnd.nextDouble() * 100) / 100;
+						}
+						weights[i][u][p] = xx;
 					}
-					weights[i][u][p] = xx;
 				}
 			}
+			
+			for(int i = 0; i < biases.length; i++)
+				for(int j = 0; j < biases[i].length; j++)   //Intitializing Biases
+				{
+					int a = rnd.nextBoolean() ? -1 : 1;
+					biases[i][j] = rnd.nextDouble() * a;
+				}
 		}
-		
-		for(int i = 0; i < biases.length; i++)
-			for(int j = 0; j < biases[i].length; j++)   //Intitializing Biases
-			{
-				int a = rnd.nextBoolean() ? -1 : 1;
-				biases[i][j] = rnd.nextDouble() * a;
-			}
 	}
 	/***********************************
 	 ***********************************   Methods Start:
@@ -100,6 +134,191 @@ public class NeuralNet{
 		}
 	}
 	//-------------------------------------------------------------------------------------------------------------------------
+	public void load()
+	{
+		File a;
+		//*************Error Checking*******************
+		if(!path.toLowerCase().contains(".nnet"))
+			throw new java.lang.Error("File must be a .NNet file");
+			
+		if(path.indexOf("/") == -1 && path.indexOf("\\") == -1)
+			path = System.getProperty("user.dir") + "\\" + path;
+		
+		if(path != null)
+			a = new File(path);
+		
+		else
+			throw new java.lang.Error("File Path does not exist. Use load with parameter if the NeuralNet object was not created with only file path");
+		if(!a.exists())
+			throw new java.lang.Error("The file: " + path + " does not exist or could not be found");
+		//****************************************************
+		
+		String doc = readFileFullPath(path);
+		
+		String[] f = doc.split(" ");
+		String[][] s = new String[f.length][];
+		
+		for(int i = 0; i < f.length; i++)
+			s[i] = f[i].split("V");
+			
+		String[][][] t = new String[s.length][][];
+		
+		for(int i = 0; i < s.length; i++)
+			for(int y = 0; y < s[i].length; y++)
+			{
+				t[i] = new String[s[i].length][];
+			}
+				
+		for(int i = 0; i < s.length; i++)
+			for(int y = 0; y < s[i].length; y++)
+				t[i][y] = s[i][y].split("Z");
+
+						
+		weights = new double[t.length][][];
+		
+		for(int i = 0; i < t.length; i++)
+			for(int y = 0; y < t[i].length; y++)
+					weights[i] = new double[t[i].length][];
+		
+		for(int i = 0; i < t.length; i++)
+			for(int y = 0; y < t[i].length; y++)
+				for(int x = 0; x < t[i][y].length; x++)
+					weights[i][y] = new double[t[i][y].length];		
+				
+			for(int i = 0; i < t.length; i++)
+				for(int y = 0; y < t[i].length; y++)
+					for(int j = 0; j < t[i][y].length; j++)
+					{
+						weights[i][y][j] = Double.valueOf(t[i][y][j]);
+					}
+	}
+	//-------------------------------------------------------------------------------------------------------------------------
+	public void load(String file)
+	{
+		File a;
+		//*************Error Checking*******************
+		if(!file.toLowerCase().contains(".nnet"))
+			throw new java.lang.Error("File must be a .NNet file");
+			
+		if(file.indexOf("/") == -1 && file.indexOf("\\") == -1)
+			file = System.getProperty("user.dir") + "\\" + path;
+		
+		if(path != null)
+			a = new File(file);
+		
+		else
+			throw new java.lang.Error("File Path does not exist. Use load with parameter if the NeuralNet object was not created with only file path");
+		if(!a.exists())
+			throw new java.lang.Error("The file: " + path + " does not exist or could not be found");
+		//****************************************************
+		
+		String doc = readFileFullPath(path);
+		
+		String[] f = doc.split(" ");
+		String[][] s = new String[f.length][];
+		
+		for(int i = 0; i < f.length; i++)
+			s[i] = f[i].split("V");
+			
+		String[][][] t = new String[s.length][][];
+		
+		for(int i = 0; i < s.length; i++)
+			for(int y = 0; y < s[i].length; y++)
+			{
+				t[i] = new String[s[i].length][];
+			}
+				
+		for(int i = 0; i < s.length; i++)
+			for(int y = 0; y < s[i].length; y++)
+				t[i][y] = s[i][y].split("Z");
+
+						
+		weights = new double[t.length][][];
+		
+		for(int i = 0; i < t.length; i++)
+			for(int y = 0; y < t[i].length; y++)
+					weights[i] = new double[t[i].length][];
+		
+		for(int i = 0; i < t.length; i++)
+			for(int y = 0; y < t[i].length; y++)
+				for(int x = 0; x < t[i][y].length; x++)
+					weights[i][y] = new double[t[i][y].length];		
+				
+			for(int i = 0; i < t.length; i++)
+				for(int y = 0; y < t[i].length; y++)
+					for(int j = 0; j < t[i][y].length; j++)
+					{
+						weights[i][y][j] = Double.valueOf(t[i][y][j]);
+					}
+	}
+	//-------------------------------------------------------------------------------------------------------------------------
+	public void save(String filePathAndName)
+	{
+		String toSave = "";
+		for(int i = 0; i < weights.length; i++)
+		{
+			for(int x = 0; x < weights[i].length; x++)
+			{
+				for(int y = 0; y < weights[i][x].length; y++)
+				{
+					toSave += String.valueOf(weights[i][x][y]);
+					if(y != weights[i][x].length - 1)
+						toSave += "Z";
+				}
+				if(x != weights[i].length - 1)
+					toSave += "V";
+			}
+			if(i != weights.length - 1)
+				toSave += " ";
+		}
+		
+		File a;
+		//*************Error Checking*******************
+		if(!filePathAndName.toLowerCase().contains(".nnet"))
+			throw new java.lang.Error("File must be a .NNet file");
+			
+		if(filePathAndName.indexOf("/") == -1 && filePathAndName.indexOf("\\") == -1)
+			path = System.getProperty("user.dir") + "\\" + path;
+			
+		writeToFileFullPath(toSave,filePathAndName);
+	}
+	//-------------------------------------------------------------------------------------------------------------------------
+	public void save()
+	{
+		String toSave = "";
+		for(int i = 0; i < weights.length; i++)
+		{
+			for(int x = 0; x < weights[i].length; x++)
+			{
+				for(int y = 0; y < weights[i][x].length; y++)
+				{
+					toSave += String.valueOf(weights[i][x][y]);
+					if(y != weights[i][x].length - 1)
+						toSave += "Z";
+				}
+				if(x != weights[i].length - 1)
+					toSave += "V";
+			}
+			if(i != weights.length - 1)
+				toSave += " ";
+		}
+		
+		File a;
+		//*************Error Checking*******************
+		if(!path.toLowerCase().contains(".nnet"))
+			throw new java.lang.Error("File must be a .NNet file");
+			
+		if(path.indexOf("/") == -1 && path.indexOf("\\") == -1)
+			path = System.getProperty("user.dir") + "\\" + path;
+		
+		if(path != null)
+			a = new File(path);
+		else
+			throw new java.lang.Error("File Path does not exist. Use load with parameter if the NeuralNet object was not created with only file path");
+		
+		writeToFileFullPath(toSave,path);
+	}
+	//-------------------------------------------------------------------------------------------------------------------------
 	public void printWeights(){ //prints the current values for the weights of the neurons between each layers in a multiline grid
 		DecimalFormat fmt = new DecimalFormat(".00");
 		System.out.println ("Layer 1");
@@ -120,12 +339,12 @@ public class NeuralNet{
   		return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 	}
 	//-------------------------------------------------------------------------------------------------------------------------
-	public static double sigmoid(double x) //Activation function. reLU is also availible
+	private static double sigmoid(double x) //Activation function. reLU is also availible
 	{
     	return 1 / (1 + Math.exp(-x));
 	}
 	//-------------------------------------------------------------------------------------------------------------------------
-	public static double sigmoidDerivative(double x) //Derivative funtion of sigmoid
+	private static double sigmoidDerivative(double x) //Derivative funtion of sigmoid
 	{
 		return sigmoid(x) * (1 - sigmoid(x));
 	}
@@ -190,13 +409,13 @@ public class NeuralNet{
 				{
 					neurons[i + 1][a] += neurons[i][p] * weights[i][p][a];
 				}
-				neurons[i+1][a] = sigmoid(neurons[i+1][a] + biases[i+1][a]);
+				neurons[i+1][a] = sigmoid(neurons[i+1][a]/* + biases[i+1][a]*/);
 			}
 		}
 		return neurons[numLayers - 1]; //Returns output layer
 	}
 	//-------------------------------------------------------------------------------------------------------------------------
-	public double[][] getNetInput()
+	private double[][] getNetInput()
 	{
 		double[][] g = getBlankArraySameAsNeurons();
 		for(int i = 0; i < numLayers - 1; i++)
@@ -213,7 +432,7 @@ public class NeuralNet{
 		return g;
 	}
 	//-------------------------------------------------------------------------------------------------------------------------
-	public double[][] getBlankArraySameAsNeurons()
+	private double[][] getBlankArraySameAsNeurons()
 	{
 		double[][] a = new double[numLayers][];
 		for(int i = 0; i < a.length; i++)
@@ -223,7 +442,7 @@ public class NeuralNet{
 		return a;
 	}
 	//-------------------------------------------------------------------------------------------------------------------------
-	public double[][][] getBlankArraySameAsWeights()
+	private double[][][] getBlankArraySameAsWeights()
 	{
 		double[][][] a = new double[numLayers - 1][][];
 		for(int i = 0; i < numLayers - 1; i++)
@@ -403,7 +622,7 @@ public class NeuralNet{
 			
 	}
 	//-----------------------------------------------------------------------------------------------------------------------
-	public static void writeToFile(String data, String fileName) {
+	private static void writeToFile(String data, String fileName) {
 		File a;
 		if(fileName.toLowerCase().contains(".nnet"))
 			a = new File(System.getProperty("user.dir") + "/" + fileName);               //Make file with or without extension
@@ -419,7 +638,7 @@ public class NeuralNet{
     }
 	//-------------------------------------------------------------------------------------------------------------------------
 	//This is an overloaded method with the filepath
-	public static void writeToFile(String data, String fileName, String filePathNoSlash) {
+	private static void writeToFile(String data, String fileName, String filePathNoSlash) {
 		File a;
 		if(fileName.toLowerCase().contains(".nnet"))
 			a = new File(filePathNoSlash + "/" + fileName);				//Make file with or without extension
@@ -434,7 +653,29 @@ public class NeuralNet{
         }
     }
 	//-------------------------------------------------------------------------------------------------------------------------
-	public String readFile(String filePathNoSlash, String fileName)
+	private static void writeToFileFullPath(String data, String fileNameAndPath) {
+			File a;
+		a = new File(fileNameAndPath);
+			
+		if(!a.exists())
+			try
+			{
+				a.createNewFile();
+			}
+			catch(Exception e)
+			{
+				throw new java.lang.Error("The file: " + fileNameAndPath + " could not be created. Please make sure a correct location, and extension are included in the String");
+			}
+		
+			
+        try {
+            Files.write(Paths.get(a.getPath()), data.getBytes());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+	//-------------------------------------------------------------------------------------------------------------------------
+	private String readFile(String filePathNoSlash, String fileName)
 	{
 		File file;
 		if(fileName.toLowerCase().contains(".nnet"))
@@ -459,7 +700,7 @@ public class NeuralNet{
 	}
 	//-------------------------------------------------------------------------------------------------------------------------
 	//Overload
-	public String readFile(String fileName)
+	private String readFile(String fileName)
 	{
 		File file;
 		if(fileName.toLowerCase().contains(".nnet"))
@@ -483,12 +724,34 @@ public class NeuralNet{
 		return	toOut;
 	}
 	//-------------------------------------------------------------------------------------------------------------------------
-	public double reLU(double a) //Activation function. Sigmoid is also availible
+	//Overload
+	private String readFileFullPath(String filePathWithName)
+	{
+		File file;
+		file = new File(filePathWithName);
+			
+		if(!file.exists())
+			throw new java.lang.Error("The file: " + file.getName() + " could not be located."); //Throw error if file doesnt exist
+				
+		String toOut = "";
+  		try{
+  			BufferedReader br = new BufferedReader(new FileReader(file)); 
+  		
+		String st; 
+		while ((st = br.readLine()) != null) 
+			toOut += st;
+  		}
+  		catch(IOException e)
+  		{e.printStackTrace();}
+		return	toOut;
+	}
+	//-------------------------------------------------------------------------------------------------------------------------
+	private double reLU(double a) //Activation function. Sigmoid is also availible
 	{
 		return Math.max(0.0, a);
 	}
 	//-------------------------------------------------------------------------------------------------------------------------
-	public double reLUDerivative(double a) //Derivative of reLU activation Function
+	private double reLUDerivative(double a) //Derivative of reLU activation Function
 	{
 		if (a > 0)
       		return 1.0;
