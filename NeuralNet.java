@@ -35,6 +35,7 @@ public class NeuralNet{
 	}
 	//----------------------------------------------------------------------------------------------------------
 	public NeuralNet(int layerSizes[], boolean shouldLoadNetIfAvailible){ //Sets up a NEW neural net and initializes neurons
+		boolean shouldContinue = true;
 		if(shouldLoadNetIfAvailible)
 		{
 			File dir = new File(System.getProperty("user.dir"));
@@ -51,17 +52,18 @@ public class NeuralNet{
 				
 				 for(int i = 1; i < numLayers - 1; i++)
 					neurons[i] = new double[weights[i].length];
-			     
+			     shouldContinue = false;
 			     break;
 			   }
   			}
 		}
-		else
-		{	
+		
+		if(shouldContinue)
+		{
 			Random rnd = new Random();
 			numLayers = layerSizes.length;
 			
-			//************************************************************************************************
+			//****************S********************************************************************************
 			if(numLayers > 2)
 			{
 				neurons = new double[numLayers][];                //Error checking to make sure that numLayers == layerSizes.length && numLayers >0
@@ -94,10 +96,7 @@ public class NeuralNet{
 				for(int u = 0; u < weights[i].length; u++){
 					for (int p = 0; p < weights[i][u].length; p++){                   //(comment above)
 						double xx = Math.floor(rnd.nextDouble() * 100) / 100;
-						while(xx <= 0){
-							xx = Math.floor(rnd.nextDouble() * 100) / 100;
-						}
-						weights[i][u][p] = xx;
+						weights[i][u][p] = xx * (rnd.nextBoolean() ? -1 : 1);
 					}
 				}
 			}
@@ -134,7 +133,7 @@ public class NeuralNet{
 		}
 	}
 	//-------------------------------------------------------------------------------------------------------------------------
-	public void load()
+	public void load() //Loads the net located in class variable "path"
 	{
 		File a;
 		//*************Error Checking*******************
@@ -193,7 +192,7 @@ public class NeuralNet{
 					}
 	}
 	//-------------------------------------------------------------------------------------------------------------------------
-	public void load(String file)
+	public void load(String file) //Loads a net into the class from the file
 	{
 		File a;
 		//*************Error Checking*******************
@@ -252,7 +251,7 @@ public class NeuralNet{
 					}
 	}
 	//-------------------------------------------------------------------------------------------------------------------------
-	public void save(String filePathAndName)
+	public void save(String filePathAndName) //Saving to the path, this can be used to save the same net to different locations
 	{
 		String toSave = "";
 		for(int i = 0; i < weights.length; i++)
@@ -283,7 +282,7 @@ public class NeuralNet{
 		writeToFileFullPath(toSave,filePathAndName);
 	}
 	//-------------------------------------------------------------------------------------------------------------------------
-	public void save()
+	public void save() //only use if the class variable "path" is defined
 	{
 		String toSave = "";
 		for(int i = 0; i < weights.length; i++)
@@ -350,12 +349,12 @@ public class NeuralNet{
 	}
 	//-------------------------------------------------------------------------------------------------------------------------
 	
-	private double round(double x) //Function used to turn values into a range in between 0 && 1
+	public double round(double x) //Function used to turn values into a range in between 0 && 1
 	{
     	return Math.floor(x * 100) / 100;
 	}
 	//-------------------------------------------------------------------------------------------------------------------------
-	public int forwardPropogate(double inputs[])
+	public int forwardPropogate(double inputs[]) //This sends the inputs through the net and returns the int (from 0 - n) of which neuron had the highest activation
 	{
 		//*******************************************************************************************************
 		if(inputs.length != neurons[0].length)
@@ -432,7 +431,7 @@ public class NeuralNet{
 		return g;
 	}
 	//-------------------------------------------------------------------------------------------------------------------------
-	private double[][] getBlankArraySameAsNeurons()
+	private double[][] getBlankArraySameAsNeurons() //Makes a jagged array the same dimensions as the neurons
 	{
 		double[][] a = new double[numLayers][];
 		for(int i = 0; i < a.length; i++)
@@ -442,7 +441,7 @@ public class NeuralNet{
 		return a;
 	}
 	//-------------------------------------------------------------------------------------------------------------------------
-	private double[][][] getBlankArraySameAsWeights()
+	private double[][][] getBlankArraySameAsWeights() //Makes a jagged array the same dimensions as weights
 	{
 		double[][][] a = new double[numLayers - 1][][];
 		for(int i = 0; i < numLayers - 1; i++)
@@ -452,7 +451,7 @@ public class NeuralNet{
 		return a;
 	}
 	//-------------------------------------------------------------------------------------------------------------------------
-	public void teach(double[] inputs, double[] expectedOutputs)
+	public void teach(double[] inputs, double[] expectedOutputs) //This function is just a user-friendly way of doing what I did below
 	{
 		backPropogatate(forwardPropogateGetOutputLayer(inputs), expectedOutputs);
 	}
@@ -460,7 +459,7 @@ public class NeuralNet{
 	public void backPropogatate(double[] output, double[] desiredOutput)
 	{
 		
-		final double RATE = .5;
+		final double RATE = .08;
 		//*******************************************************************************************************
 		if(output.length != desiredOutput.length)
 			throw new java.lang.Error("Output array and desired output array must be the same length");				//Error Checking
@@ -614,8 +613,6 @@ public class NeuralNet{
 		
 		//****Lastly, update the weight in separate container
 			//-> w1 = w1 - (learningRate)(dEtotal/dw)
-			
-		//Last step (if anyone actually reads this) get a girlfriend or maybe go outside
 					
 				
 	//**********REPEAT*********************		
