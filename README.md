@@ -1,8 +1,7 @@
 # Java-AI
 This is an AI using Java
 
-Files: all nessesary files are provided and comments with explain code. 
-How AI works in general is *not* explained, rather the comments are explaining what it code is doing, not *why*
+Files: all nessesary files are provided to be able to run a basic program, with comments to with explain code. 
  
 # How to train the AI:
  ~Create a net as seen in Net_Runner.java
