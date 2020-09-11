@@ -1,6 +1,6 @@
 # Note
 
-There was too mamy files to upload to GitHub, so here is a google drive link
+There was too many files to upload to GitHub, so here is a google drive link
 
 https://drive.google.com/drive/folders/1TGm_rfsW0WJ32xoT2LhivvEEQ2Z1vliJ?usp=sharing
 
