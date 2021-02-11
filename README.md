@@ -1,6 +1,8 @@
 # Java-AI
 This is an AI using Java
 
+To view the demo, make sure to click "view raw" after clicking on "AI Demo.MOV" which will download the video, since GitHub does not support videos
+
 Files: all nessesary files are provided to be able to run a basic program, with comments to with explain code. 
  
 # How to train the AI:
